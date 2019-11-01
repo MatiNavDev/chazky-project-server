@@ -1,9 +1,9 @@
-const requirement = require('./Requirement');
+const requeriment = require('./Requeriment');
 const user = require('./User');
 const vehicle = require('./Vehicle');
 
 module.exports = {
-  requirement,
+  requeriment,
   user,
   vehicle
 };

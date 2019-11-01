@@ -1,9 +1,9 @@
 const express = require('express');
 
-const {} = require('../controllers/requeriment');
+const { getRequeriments } = require('../controllers/requeriment');
 
 const router = express.Router();
 
-router.use('/', () => console.log('requeriment'));
+router.use('/', getRequeriments);
 
 module.exports = router;

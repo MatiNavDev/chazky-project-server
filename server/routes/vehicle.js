@@ -1,9 +1,9 @@
 const express = require('express');
 
-const {} = require('../controllers/vehicle');
+const { getVehicles } = require('../controllers/vehicle');
 
 const router = express.Router();
 
-router.use('/', () => console.log('vehicle'));
+router.use('/', getVehicles);
 
 module.exports = router;

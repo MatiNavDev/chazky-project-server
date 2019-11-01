@@ -11,7 +11,8 @@ class CollectionsFactory {
   }
 
   /**
-   * @param {boolean} all
+   *
+   * @param {boolean} one
    * @param {object} filters
    * @param {object} options
    */
