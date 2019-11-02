@@ -32,19 +32,47 @@ const setUserSearchingTravel = async (req, res) => {
     const userUpdated = await User.update(
       true,
       { _id: ObjectID(user) },
-      { $set: { socketId, requeriments, shareVehicle } },
+      { $set: { socketId, requeriments, shareVehicle, used: true } },
       { returnOriginal: false }
     );
+
+    //TODO: ver que userUpSharesVehicle no sea un bool sino que tenga que hacer
+    // un query para traer esos usuarios y ver si tienen o no la opcion de compartir auto
     const Vehicle = new CollectionsFactory(classes.VEHICLE);
     const vehiclesConditions = {
       used: true,
       notAllowedUsers: { $nin: [user] },
+      requeriments,
       userUpSharesVehicle: true
     };
 
     if (!shareVehicle) vehiclesConditions.userUp = false;
+    if (requeriments.length) vehiclesConditions.requeriments = { $all: requeriments };
 
-    const vehicles = await Vehicle.find(false, { vehiclesConditions });
+    const vehicles = await Vehicle.collection
+      .aggregate([
+        {
+          $match: {
+            used: true,
+            notAllowedUsers: { $nin: [user] },
+            userUpSharesVehicle: true
+          }
+        },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'usersUp',
+            foreignField: '_id',
+            as: 'users'
+          }
+        },
+        {
+          $match: {
+            'users.shareVehicle': true
+          }
+        }
+      ])
+      .toArray();
 
     if (vehicles.length) {
       vehicles.forEach(v => {
@@ -54,7 +82,7 @@ const setUserSearchingTravel = async (req, res) => {
 
     handleCommonResponse(res, { ok: 'ok' });
   } catch (error) {
-    handleCommonError(error);
+    handleCommonError(res, error);
   }
 };
 module.exports = {
