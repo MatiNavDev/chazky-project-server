@@ -1,9 +1,11 @@
 const express = require('express');
 
-const { getUsers } = require('../controllers/user');
+const { getUsers, setUserSearchingTravel } = require('../controllers/user');
 
 const router = express.Router();
 
-router.use('/', getUsers);
+router.get('/', getUsers);
+
+router.post('/', setUserSearchingTravel);
 
 module.exports = router;

@@ -24,6 +24,16 @@ class CollectionsFactory {
       ? this.collection.findOne(filters, options)
       : this.collection.find(filters, options).toArray();
   }
+
+  update(one, filters, update, options) {
+    update = update || {};
+    filters = filters || {};
+    options = options || {};
+
+    return one
+      ? this.collection.findOneAndUpdate(filters, update, options)
+      : this.collection.updateMany(filters, update, options).toArray();
+  }
 }
 
 const classes = {

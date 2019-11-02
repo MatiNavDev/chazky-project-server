@@ -1,9 +1,11 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const http = require('http');
 
 const userRoutes = require('../routes/user');
 const vehicleRoutes = require('../routes/vehicle');
 const requerimentsRoutes = require('../routes/requeriment');
+const { initSocket } = require('../helpers/socket');
 
 let app;
 const routeInitialText = '/chasky-project-api/v1';
@@ -31,7 +33,11 @@ const initializeApp = () => {
 
   const PORT = process.env.PORT || 3007;
 
-  app.listen(PORT, () => console.log(`Chasky Project running in port: ${PORT}`));
+  let server = http.createServer(app);
+
+  initSocket(server);
+
+  server.listen(PORT, () => console.log(`Chasky Project running in port: ${PORT}`));
 
   return app;
 };
