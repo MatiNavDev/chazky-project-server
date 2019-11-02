@@ -21,12 +21,9 @@ const getUsers = async (req, res) => {
 
 const setUserSearchingTravel = async (req, res) => {
   try {
-    const {
-      socketId,
-      requerimentsSelecteds: requeriments,
-      shareTravel: shareVehicle,
-      user
-    } = req.body;
+    const { socketId, requerimentsSelecteds, shareTravel: shareVehicle, user } = req.body;
+
+    const requeriments = requerimentsSelecteds.map(req => ObjectID(req));
 
     const User = new CollectionsFactory(classes.USER);
     const userUpdated = await User.update(

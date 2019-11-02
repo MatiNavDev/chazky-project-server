@@ -27,28 +27,38 @@ const getVehicles = async (req, res) => {
  */
 const setVehicleSearchingTravel = async (req, res) => {
   try {
-    const { socketId, requerimentsSelecteds: requeriments, vehicle } = req.body;
+    const { socketId, vehicle } = req.body;
 
     const Vehicle = new CollectionsFactory(classes.VEHICLE);
-    await Vehicle.update(
+    const User = new CollectionsFactory(classes.USER);
+
+    const queryToUpdateVehicle = Vehicle.update(
       true,
       { _id: ObjectID(vehicle) },
-      { $set: { socketId, requeriments, used: true } },
+      { $set: { socketId, used: true } },
       { returnOriginal: false }
     );
-
-    const User = new CollectionsFactory(classes.USER);
-    const userConditions = {
+    const queryToFindWatingUsers = User.find(false, {
       used: true,
-      requeriments: { $in: requeriments },
       avaible: true
-    };
+    });
 
-    const users = await User.find(false, userConditions);
+    const [vehicleUpdateResp, usersWating] = await Promise.all([
+      queryToUpdateVehicle,
+      queryToFindWatingUsers
+    ]);
 
-    handleCommonResponse({ users });
+    const vehicleUpdated = vehicleUpdateResp.value;
+
+    const usersToAccept = usersWating.filter(user =>
+      user.requeriments.every(userReqObjId =>
+        vehicleUpdated.requeriments.find(vehicleReqObjId => vehicleReqObjId.equals(userReqObjId))
+      )
+    );
+
+    handleCommonResponse(res, { usersToAccept });
   } catch (error) {
-    handleCommonError(error);
+    handleCommonError(res, error);
   }
 };
 
