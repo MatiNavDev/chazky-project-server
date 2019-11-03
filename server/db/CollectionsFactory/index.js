@@ -34,6 +34,13 @@ class CollectionsFactory {
       ? this.collection.findOneAndUpdate(filters, update, options)
       : this.collection.updateMany(filters, update, options);
   }
+
+  notUsedAnymore(_id, update) {
+    const filter = { _id };
+    const options = { returnOriginal: true };
+
+    return this.update(true, filter, update, options);
+  }
 }
 
 const classes = {

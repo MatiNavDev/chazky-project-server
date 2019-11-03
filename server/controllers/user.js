@@ -78,6 +78,52 @@ const setUserSearchingTravel = async (req, res) => {
 };
 
 /**
+ * Se encarga de setear que un usuario ya no esta disponible.
+ * Si tiene vehiculo que lo tiene arriba, cancela el viaje.
+ * @param {*} req
+ * @param {*} res
+ */
+const notUsedAnymore = async (req, res) => {
+  try {
+    const { id } = req.body;
+
+    const userObjectId = ObjectID(id);
+
+    const User = new CollectionsFactory(classes.USER);
+    const Vehicle = new CollectionsFactory(classes.VEHICLE);
+
+    const updateObj = {
+      $set: {
+        avaible: true,
+        used: false,
+        socket: null,
+        requeriments: []
+      }
+    };
+
+    const updateUserQuery = User.notUsedAnymore(userObjectId, updateObj);
+    const updateVehicleQuery = Vehicle.update(
+      true,
+      { usersUp: userObjectId },
+      { $pull: { usersUp: userObjectId } }
+    );
+
+    const [vehicleUpdateResp, userUpdatedResp] = await Promise.all([
+      updateVehicleQuery,
+      updateUserQuery
+    ]);
+
+    const vehicleUpdated = vehicleUpdateResp.value;
+    const userUpdated = userUpdatedResp.value;
+    socketSendMessage(userUpdated.socketId, channels.REFRESH_USERS, id);
+    socketSendMessage(null, channels.VEHICLE_REMOVE_TRAVELLING_USER, id);
+    handleCommonResponse(res, { ok: 'ok' });
+  } catch (error) {
+    handleCommonError(res, error);
+  }
+};
+
+/**
  * Limpia todos los usuarios conectados
  * @param {*} req
  * @param {*} res
@@ -98,5 +144,6 @@ const cleanAllUsers = async (req, res) => {
 module.exports = {
   getUsers,
   setUserSearchingTravel,
+  notUsedAnymore,
   cleanAllUsers
 };

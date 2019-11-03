@@ -2,11 +2,7 @@ const { ObjectID } = require('mongodb');
 
 const { CollectionsFactory, classes } = require('../db/CollectionsFactory');
 const { handleCommonError, handleCommonResponse } = require('../helpers/responses');
-const {
-  socketDisconnectSpecificClient,
-  socketSendMessage,
-  channels
-} = require('../helpers/socket');
+const { socketDisconnectSpecificUser, socketSendMessage, channels } = require('../helpers/socket');
 
 /**
  * Devuelve el listado de vehiculos que no se encuentren utilizados
@@ -77,19 +73,30 @@ const notUsedAnymore = async (req, res) => {
   try {
     const { id } = req.body;
 
-    const Vehicle = new CollectionsFactory(classes.VEHICLE);
-    const vehiclePreviousUpdate = await Vehicle.notUsedAnymore(ObjectID(id));
+    const updateObj = {
+      $set: {
+        used: false,
+        socket: null,
+        userUp: [],
+        notAllowedUsers: []
+      }
+    };
 
-    if (vehiclePreviousUpdate.usersUp.length) return handleCommonResponse({ ok: 'ok' });
+    const Vehicle = new CollectionsFactory(classes.VEHICLE);
+    const { value: vehiclePreviousUpdate } = await Vehicle.notUsedAnymore(ObjectID(id), updateObj);
+
+    if (!vehiclePreviousUpdate.usersUp.length) return handleCommonResponse(res, { ok: 'ok' });
 
     const User = new CollectionsFactory(classes.USER);
 
-    users = await Promise.all(
-      vehiclePreviousUpdate.usersUp.map(userId => User.find(true, { _id: ObjectID(userId) }))
+    const users = await Promise.all(
+      vehiclePreviousUpdate.usersUp.map(userId =>
+        User.update(true, { _id: userId }, { $set: { used: false } })
+      )
     );
-    users.forEach(user => socketDisconnectSpecificClient(user.socketId));
+    users.forEach(user => socketDisconnectSpecificUser(user.socketId));
 
-    handleCommonResponse({ ok: 'ok' });
+    handleCommonResponse(res, { ok: 'ok' });
   } catch (error) {
     handleCommonError(res, error);
   }
@@ -131,6 +138,30 @@ const acceptUser = async (req, res) => {
 };
 
 /**
+ * Maneja que el vehiculo rechaze un usuario agregandolo a la lista de usuarios no deseados
+ * @param {*} req
+ * @param {*} res
+ */
+const rejectUser = async (req, res) => {
+  try {
+    const { userId, vehicleId } = req.body;
+
+    const Vehicle = new CollectionsFactory(classes.VEHICLE);
+
+    const { value: vehicleUpdated } = await Vehicle.update(
+      true,
+      { _id: ObjectID(vehicleId) },
+      { $push: { notAllowedUsers: ObjectID(userId) } },
+      { returnOriginal: false }
+    );
+
+    handleCommonResponse(res, { vehicleUpdated });
+  } catch (error) {
+    handleCommonError(res, error);
+  }
+};
+
+/**
  * Limpia todos los usuarios conectados
  * @param {*} req
  * @param {*} res
@@ -158,5 +189,6 @@ module.exports = {
   notUsedAnymore,
   setVehicleSearchingTravel,
   acceptUser,
+  rejectUser,
   cleanAllVehicles
 };

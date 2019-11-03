@@ -3,7 +3,10 @@ const socketIO = require('socket.io');
 const channels = {
   VEHICLE_LISTENING_FOR_TRAVEL: 'VEHICLE_LISTENING_FOR_TRAVEL',
   USER_LISTENING_FOR_TRAVEL: 'USER_LISTENING_FOR_TRAVEL',
-  USER_DISCONNECT: 'USER_DISCONNECT'
+  USER_DISCONNECT: 'USER_DISCONNECT',
+  VEHICLE_REMOVE_TRAVELLING_USER: 'VEHICLE_REMOVE_TRAVELLING_USER',
+  REFRESH_USERS: 'REFRESH_USERS',
+  REFRESH_VEHICLES: 'REFRESH_VEHICLES'
 };
 
 let io;
@@ -14,8 +17,13 @@ let io;
  * @param {string} channel
  * @param {*} data
  */
-const socketSendMessage = (socketId, channel, data) => io.to(socketId).emit(channel, data);
-
+const socketSendMessage = (socketId, channel, data) => {
+  if (socketId) {
+    io.to(socketId).emit(channel, data);
+  } else {
+    io.emit(channel, data);
+  }
+};
 /**
  * Desconecta un usuario especifico
  * @param {string} socketId
