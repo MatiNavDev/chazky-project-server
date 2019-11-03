@@ -108,12 +108,19 @@ const acceptUser = async (req, res) => {
     const vehicleObjectId = ObjectID(vehicleId);
 
     const Vehicle = new CollectionsFactory(classes.VEHICLE);
-    const { value: vehicleUpdated } = await Vehicle.update(
+    const User = new CollectionsFactory(classes.USER);
+    const updateVehicleQuery = Vehicle.update(
       true,
       { _id: vehicleObjectId },
       { $push: { usersUp: userObjectId } },
       { returnOriginal: false }
     );
+
+    const updateUserQuery = User.update(true, { _id: userObjectId }, { $set: { avaible: false } });
+
+    const [vehicleUpdateResp] = await Promise.all([updateVehicleQuery, updateUserQuery]);
+
+    const { value: vehicleUpdated } = vehicleUpdateResp;
 
     const travelInfo = `Felicitaciones, el vehiculo "${vehicleUpdated.name}" ha aceptado tu viaje!!`;
     socketSendMessage(userSocketId, channels.USER_LISTENING_FOR_TRAVEL, travelInfo);
