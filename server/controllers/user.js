@@ -21,6 +21,7 @@ const getUsers = async (req, res) => {
 
 const setUserSearchingTravel = async (req, res) => {
   try {
+    //TODO: manejar si el usuario se encuentra utilizado (uno abrio la pestana y lo eligio antes del otro)
     const { socketId, requerimentsSelecteds, shareTravel: shareVehicle, user } = req.body;
 
     const requeriments = requerimentsSelecteds.map(req => ObjectID(req));
@@ -33,26 +34,23 @@ const setUserSearchingTravel = async (req, res) => {
       { returnOriginal: false }
     );
 
-    //TODO: ver que userUpSharesVehicle no sea un bool sino que tenga que hacer
-    // un query para traer esos usuarios y ver si tienen o no la opcion de compartir auto
     const Vehicle = new CollectionsFactory(classes.VEHICLE);
     const vehiclesConditions = {
       used: true,
-      notAllowedUsers: { $nin: [user] },
+      notAllowedUsers: { $nin: [ObjectID(user)] },
       requeriments,
       userUpSharesVehicle: true
     };
 
-    if (!shareVehicle) vehiclesConditions.userUp = false;
     if (requeriments.length) vehiclesConditions.requeriments = { $all: requeriments };
 
+    //TODO: probar notAllowedUsers(rechazar), probar si un usuario subido no acepta compartir vehiculos y otro si
     const vehicles = await Vehicle.collection
       .aggregate([
         {
           $match: {
             used: true,
-            notAllowedUsers: { $nin: [user] },
-            userUpSharesVehicle: true
+            notAllowedUsers: { $nin: [ObjectID(user)] }
           }
         },
         {
@@ -63,17 +61,13 @@ const setUserSearchingTravel = async (req, res) => {
             as: 'users'
           }
         },
-        {
-          $match: {
-            'users.shareVehicle': true
-          }
-        }
+        { $match: { $or: [{ 'users.0': { $exists: false } }, { 'users.shareVehicle': true }] } }
       ])
       .toArray();
 
     if (vehicles.length) {
       vehicles.forEach(v => {
-        socketSendMessage(v.socketId, channels.VEHICLE_LISTENING, userUpdated);
+        socketSendMessage(v.socketId, channels.VEHICLE_LISTENING_FOR_TRAVEL, userUpdated.value);
       });
     }
 
@@ -82,7 +76,27 @@ const setUserSearchingTravel = async (req, res) => {
     handleCommonError(res, error);
   }
 };
+
+/**
+ * Limpia todos los usuarios conectados
+ * @param {*} req
+ * @param {*} res
+ */
+const cleanAllUsers = async (req, res) => {
+  try {
+    //TODO: habria que cortar todas las conexiones de socket. A modo de simplificacion solo limpio los usuarios
+
+    const User = new CollectionsFactory(classes.USER);
+
+    await User.update(false, {}, { $set: { used: false, avaible: true, socketId: '' } });
+
+    handleCommonResponse(res, { ok: 'ok' });
+  } catch (error) {
+    handleCommonError(res, error);
+  }
+};
 module.exports = {
   getUsers,
-  setUserSearchingTravel
+  setUserSearchingTravel,
+  cleanAllUsers
 };

@@ -28,7 +28,7 @@ const socketDisconnectSpecificUser = socketId =>
  * @param {*} server
  */
 const initSocket = server => {
-  const io = socketIO(server);
+  io = socketIO(server);
 
   io.on('connection', socket => {
     console.log('user connected');

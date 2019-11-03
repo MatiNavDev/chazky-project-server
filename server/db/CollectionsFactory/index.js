@@ -32,7 +32,7 @@ class CollectionsFactory {
 
     return one
       ? this.collection.findOneAndUpdate(filters, update, options)
-      : this.collection.updateMany(filters, update, options).toArray();
+      : this.collection.updateMany(filters, update, options);
   }
 }
 

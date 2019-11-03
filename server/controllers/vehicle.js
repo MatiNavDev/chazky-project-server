@@ -2,7 +2,11 @@ const { ObjectID } = require('mongodb');
 
 const { CollectionsFactory, classes } = require('../db/CollectionsFactory');
 const { handleCommonError, handleCommonResponse } = require('../helpers/responses');
-const { socketDisconnectSpecificClient } = require('../helpers/socket');
+const {
+  socketDisconnectSpecificClient,
+  socketSendMessage,
+  channels
+} = require('../helpers/socket');
 
 /**
  * Devuelve el listado de vehiculos que no se encuentren utilizados
@@ -27,6 +31,7 @@ const getVehicles = async (req, res) => {
  */
 const setVehicleSearchingTravel = async (req, res) => {
   try {
+    //TODO: manejar si el vehiculo se encuentra utilizado (uno abrio la pestana y lo eligio antes del otro)
     const { socketId, vehicle } = req.body;
 
     const Vehicle = new CollectionsFactory(classes.VEHICLE);
@@ -86,12 +91,65 @@ const notUsedAnymore = async (req, res) => {
 
     handleCommonResponse({ ok: 'ok' });
   } catch (error) {
-    handleCommonError(error);
+    handleCommonError(res, error);
+  }
+};
+
+/**
+ * Acepta al usuario para viajar
+ * @param {*} req
+ * @param {*} res
+ */
+const acceptUser = async (req, res) => {
+  try {
+    const { vehicleId, userId, userSocketId } = req.body;
+
+    const userObjectId = ObjectID(userId);
+    const vehicleObjectId = ObjectID(vehicleId);
+
+    const Vehicle = new CollectionsFactory(classes.VEHICLE);
+    const { value: vehicleUpdated } = await Vehicle.update(
+      true,
+      { _id: vehicleObjectId },
+      { $push: { usersUp: userObjectId } },
+      { returnOriginal: false }
+    );
+
+    const travelInfo = `Felicitaciones, el vehiculo "${vehicleUpdated.name}" ha aceptado tu viaje!!`;
+    socketSendMessage(userSocketId, channels.USER_LISTENING_FOR_TRAVEL, travelInfo);
+    handleCommonResponse(res, { ok: 'ok' });
+  } catch (error) {
+    handleCommonError(res, error);
+  }
+};
+
+/**
+ * Limpia todos los usuarios conectados
+ * @param {*} req
+ * @param {*} res
+ */
+const cleanAllVehicles = async (req, res) => {
+  try {
+    //TODO: habria que cortar todas las conexiones de socket. A modo de simplificacion solo limpio los usuarios
+
+    const Vehicle = new CollectionsFactory(classes.VEHICLE);
+
+    await Vehicle.update(
+      false,
+      {},
+      { $set: { used: false, usersUp: [], socketId: '', notAllowedUsers: [] } }
+    );
+
+    handleCommonResponse(res, { ok: 'ok' });
+  } catch (error) {
+    handleCommonError(res, error);
   }
 };
 
 module.exports = {
   getVehicles,
   notUsedAnymore,
-  setVehicleSearchingTravel
+  setVehicleSearchingTravel,
+  acceptUser,
+  cleanAllVehicles
 };
