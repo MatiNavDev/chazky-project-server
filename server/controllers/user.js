@@ -2,7 +2,7 @@ const { ObjectID } = require('mongodb');
 
 const { CollectionsFactory, classes } = require('../db/CollectionsFactory');
 const { handleCommonError, handleCommonResponse } = require('../helpers/responses');
-const { socketSendMessage, channels } = require('../helpers/socket');
+const { socketSendMessage, restartConnections, channels } = require('../helpers/socket');
 
 /**
  * Devuelve el listado de usuarios que no se encuentren utilizados
@@ -71,6 +71,7 @@ const setUserSearchingTravel = async (req, res) => {
       });
     }
 
+    socketSendMessage(null, channels.REFRESH_USERS);
     handleCommonResponse(res, { ok: 'ok' });
   } catch (error) {
     handleCommonError(res, error);
@@ -124,7 +125,8 @@ const notUsedAnymore = async (req, res) => {
 };
 
 /**
- * Limpia todos los usuarios conectados
+ * Limpia todos los usuarios conectados.
+ * Este controlador se encargara de limpiar las conexiones del socket
  * @param {*} req
  * @param {*} res
  */
@@ -136,6 +138,7 @@ const cleanAllUsers = async (req, res) => {
 
     await User.update(false, {}, { $set: { used: false, avaible: true, socketId: '' } });
 
+    restartConnections();
     handleCommonResponse(res, { ok: 'ok' });
   } catch (error) {
     handleCommonError(res, error);

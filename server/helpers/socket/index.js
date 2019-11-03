@@ -6,7 +6,9 @@ const channels = {
   USER_DISCONNECT: 'USER_DISCONNECT',
   VEHICLE_REMOVE_TRAVELLING_USER: 'VEHICLE_REMOVE_TRAVELLING_USER',
   REFRESH_USERS: 'REFRESH_USERS',
-  REFRESH_VEHICLES: 'REFRESH_VEHICLES'
+  REFRESH_VEHICLES: 'REFRESH_VEHICLES',
+  CANT_SHARE_VEHICLE: 'CANT_SHARE_VEHICLE',
+  DISCONNECT: 'DISCONNECT'
 };
 
 let io;
@@ -43,9 +45,14 @@ const initSocket = server => {
   });
 };
 
+const restartConnections = () => {
+  io.emit(channels.DISCONNECT);
+};
+
 module.exports = {
   socketDisconnectSpecificUser,
   initSocket,
   socketSendMessage,
+  restartConnections,
   channels
 };

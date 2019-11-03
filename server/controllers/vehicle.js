@@ -27,7 +27,6 @@ const getVehicles = async (req, res) => {
  */
 const setVehicleSearchingTravel = async (req, res) => {
   try {
-    //TODO: manejar si el vehiculo se encuentra utilizado (uno abrio la pestana y lo eligio antes del otro)
     const { socketId, vehicle } = req.body;
 
     const Vehicle = new CollectionsFactory(classes.VEHICLE);
@@ -57,6 +56,7 @@ const setVehicleSearchingTravel = async (req, res) => {
       )
     );
 
+    socketSendMessage(null, channels.REFRESH_VEHICLES);
     handleCommonResponse(res, { usersToAccept });
   } catch (error) {
     handleCommonError(res, error);
@@ -125,13 +125,19 @@ const acceptUser = async (req, res) => {
 
     const updateUserQuery = User.update(true, { _id: userObjectId }, { $set: { avaible: false } });
 
-    const [vehicleUpdateResp] = await Promise.all([updateVehicleQuery, updateUserQuery]);
+    const [vehicleUpdateResp, userUpdatedResp] = await Promise.all([
+      updateVehicleQuery,
+      updateUserQuery
+    ]);
 
     const { value: vehicleUpdated } = vehicleUpdateResp;
+    const { value: userUpdated } = userUpdatedResp;
 
     const travelInfo = `Felicitaciones, el vehiculo "${vehicleUpdated.name}" ha aceptado tu viaje!!`;
     socketSendMessage(userSocketId, channels.USER_LISTENING_FOR_TRAVEL, travelInfo);
-    handleCommonResponse(res, { ok: 'ok' });
+    socketSendMessage(null, channels.VEHICLE_REMOVE_TRAVELLING_USER, userId);
+
+    handleCommonResponse(res, { shareVehicle: userUpdated.shareVehicle });
   } catch (error) {
     handleCommonError(res, error);
   }
