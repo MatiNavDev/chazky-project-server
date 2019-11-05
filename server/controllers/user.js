@@ -21,16 +21,29 @@ const getUsers = async (req, res) => {
 
 const setUserSearchingTravel = async (req, res) => {
   try {
-    //TODO: manejar si el usuario se encuentra utilizado (uno abrio la pestana y lo eligio antes del otro)
-    const { socketId, requerimentsSelecteds, shareTravel: shareVehicle, user } = req.body;
+    const {
+      socketId,
+      requerimentsSelecteds,
+      shareTravel: shareVehicle,
+      user,
+      latitude,
+      longitude,
+      maxDistance
+    } = req.body;
 
     const requeriments = requerimentsSelecteds.map(req => ObjectID(req));
 
     const User = new CollectionsFactory(classes.USER);
+    const location = {
+      type: 'Point',
+      coordinates: [longitude, latitude]
+    };
     const userUpdated = await User.update(
       true,
       { _id: ObjectID(user) },
-      { $set: { socketId, requeriments, shareVehicle, used: true } },
+      {
+        $set: { socketId, requeriments, shareVehicle, used: true, location }
+      },
       { returnOriginal: false }
     );
 
@@ -48,9 +61,17 @@ const setUserSearchingTravel = async (req, res) => {
     const vehicles = await Vehicle.collection
       .aggregate([
         {
-          $match: {
-            used: true,
-            notAllowedUsers: { $nin: [ObjectID(user)] }
+          $geoNear: {
+            near: {
+              type: 'Point',
+              coordinates: [longitude, latitude]
+            },
+            maxDistance,
+            query: {
+              used: true,
+              notAllowedUsers: { $nin: [ObjectID(user)] }
+            },
+            distanceField: 'locationDistance'
           }
         },
         {
@@ -72,7 +93,7 @@ const setUserSearchingTravel = async (req, res) => {
     }
 
     socketSendMessage(null, channels.REFRESH_USERS);
-    handleCommonResponse(res, { ok: 'ok' });
+    handleCommonResponse(res, { element: userUpdated.value });
   } catch (error) {
     handleCommonError(res, error);
   }

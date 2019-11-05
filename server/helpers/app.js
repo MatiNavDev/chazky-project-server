@@ -24,7 +24,12 @@ const initializeApp = () => {
   app.use(bodyParser.json());
 
   app.use(function(req, res, next) {
-    res.header('Access-Control-Allow-Origin', 'https://chasky-app-front.herokuapp.com'); // update to match the domain you will make the request from
+    const allowedOrigins = ['http://localhost:3000', 'https://chasky-app-front.herokuapp.com'];
+    const origin = req.headers.origin;
+    if (allowedOrigins.indexOf(origin) > -1) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     next();
   });

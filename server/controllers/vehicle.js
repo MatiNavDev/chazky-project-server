@@ -57,7 +57,7 @@ const setVehicleSearchingTravel = async (req, res) => {
     );
 
     socketSendMessage(null, channels.REFRESH_VEHICLES);
-    handleCommonResponse(res, { usersToAccept });
+    handleCommonResponse(res, { usersToAccept, element: vehicleUpdated });
   } catch (error) {
     handleCommonError(res, error);
   }

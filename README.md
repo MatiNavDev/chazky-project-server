@@ -2,7 +2,7 @@
 
 Este proyecto busca poder simular que distintos usuarios quieran viajar y que otros vehiculos quieran
 aceptar viajes. El mismo fue realizado utilizando Node.JS + Express para el entorno backend + MongoDB 
-como base de datos, utilizando ATLAS como servicio CLOUD para alojar dicha base
+como base de datos, utilizando ATLAS como servicio CLOUD para alojar dicha base.
 
 ### Objetivo
 
