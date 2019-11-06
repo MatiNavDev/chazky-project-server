@@ -62,6 +62,7 @@ const setVehicleSearchingTravel = async (req, res) => {
         },
         {
           $project: {
+            socketId: 1,
             requeriments: 1,
             name: 1,
             location: 1,
@@ -164,7 +165,7 @@ const acceptUser = async (req, res) => {
 
     const travelInfo = `Felicitaciones, el vehiculo "${vehicleUpdated.name}" ha aceptado tu viaje!!`;
     socketSendMessage(userSocketId, channels.USER_LISTENING_FOR_TRAVEL, travelInfo);
-    socketSendMessage(null, channels.VEHICLE_REMOVE_TRAVELLING_USER, userId);
+    socketSendMessage(null, channels.VEHICLE_REMOVE_TRAVELLING_USER, { id: userId });
 
     handleCommonResponse(res, { shareVehicle: userUpdated.shareVehicle });
   } catch (error) {

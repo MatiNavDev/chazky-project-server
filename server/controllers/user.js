@@ -41,9 +41,12 @@ const setUserSearchingTravel = async (req, res) => {
     const userUpdated = await User.update(
       true,
       { _id: ObjectID(user) },
-      {
-        $set: { socketId, requeriments, shareVehicle, used: true, location, maxDistance }
-      },
+      [
+        {
+          $set: { socketId, requeriments, shareVehicle, used: true, location, maxDistance },
+          $project: { name: 1, socketId: 1, 'location.coordinates': 1, shareVehicle: 1 }
+        }
+      ],
       { returnOriginal: false }
     );
 
@@ -94,7 +97,12 @@ const setUserSearchingTravel = async (req, res) => {
             as: 'users'
           }
         },
-        { $match: matchForShareVehicle }
+        { $match: matchForShareVehicle },
+        {
+          $project: {
+            socketId: 1
+          }
+        }
       ])
       .toArray();
 
@@ -126,14 +134,17 @@ const notUsedAnymore = async (req, res) => {
     const User = new CollectionsFactory(classes.USER);
     const Vehicle = new CollectionsFactory(classes.VEHICLE);
 
-    const updateObj = {
-      $set: {
-        avaible: true,
-        used: false,
-        socket: null,
-        requeriments: []
+    const updateObj = [
+      {
+        $set: {
+          avaible: true,
+          used: false,
+          socket: null,
+          requeriments: []
+        },
+        $project: { socketId: 1 }
       }
-    };
+    ];
 
     const updateUserQuery = User.notUsedAnymore(userObjectId, updateObj);
     const updateVehicleQuery = Vehicle.update(
@@ -146,7 +157,7 @@ const notUsedAnymore = async (req, res) => {
 
     const userUpdated = userUpdatedResp.value;
     socketSendMessage(userUpdated.socketId, channels.REFRESH_USERS, id);
-    socketSendMessage(null, channels.VEHICLE_REMOVE_TRAVELLING_USER, id);
+    socketSendMessage(null, channels.VEHICLE_REMOVE_TRAVELLING_USER, { id, onlyAccept: true });
     handleCommonResponse(res, { ok: 'ok' });
   } catch (error) {
     handleCommonError(res, error);
