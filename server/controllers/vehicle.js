@@ -32,25 +32,54 @@ const setVehicleSearchingTravel = async (req, res) => {
     const Vehicle = new CollectionsFactory(classes.VEHICLE);
     const User = new CollectionsFactory(classes.USER);
 
-    const queryToUpdateVehicle = Vehicle.update(
+    const { value: vehicleUpdated } = await Vehicle.update(
       true,
       { _id: ObjectID(vehicle) },
       { $set: { socketId, used: true } },
       { returnOriginal: false }
     );
-    const queryToFindWatingUsers = User.find(false, {
-      used: true,
-      avaible: true
-    });
 
-    const [vehicleUpdateResp, usersWating] = await Promise.all([
-      queryToUpdateVehicle,
-      queryToFindWatingUsers
-    ]);
+    // busca usuarios cerca que se encuentren conectados
+    const usersWaiting = await User.collection
+      .aggregate([
+        {
+          $geoNear: {
+            near: {
+              type: 'Point',
+              coordinates: [
+                vehicleUpdated.location.coordinates[0],
+                vehicleUpdated.location.coordinates[1]
+              ]
+            },
+            query: {
+              used: true,
+              avaible: true
+            },
+            distanceField: 'distance',
+            spherical: false,
+            uniqueDocs: true
+          }
+        },
+        {
+          $project: {
+            requeriments: 1,
+            name: 1,
+            location: 1,
+            maxDistance: 1,
+            delta: {
+              $subtract: ['$maxDistance', '$distance']
+            }
+          }
+        },
+        {
+          $match: {
+            delta: { $gte: 0 }
+          }
+        }
+      ])
+      .toArray();
 
-    const vehicleUpdated = vehicleUpdateResp.value;
-
-    const usersToAccept = usersWating.filter(user =>
+    const usersToAccept = usersWaiting.filter(user =>
       user.requeriments.every(userReqObjId =>
         vehicleUpdated.requeriments.find(vehicleReqObjId => vehicleReqObjId.equals(userReqObjId))
       )

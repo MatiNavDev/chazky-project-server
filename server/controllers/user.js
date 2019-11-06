@@ -12,7 +12,7 @@ const { socketSendMessage, restartConnections, channels } = require('../helpers/
 const getUsers = async (req, res) => {
   try {
     const User = new CollectionsFactory(classes.USER);
-    const users = await User.find(false, { used: false });
+    const users = await User.find(false, { used: false }, {}, { name: 1, shareVehicle: 1 });
     handleCommonResponse(res, { users });
   } catch (error) {
     handleCommonError(res, error);
@@ -42,7 +42,7 @@ const setUserSearchingTravel = async (req, res) => {
       true,
       { _id: ObjectID(user) },
       {
-        $set: { socketId, requeriments, shareVehicle, used: true, location }
+        $set: { socketId, requeriments, shareVehicle, used: true, location, maxDistance }
       },
       { returnOriginal: false }
     );
@@ -57,7 +57,19 @@ const setUserSearchingTravel = async (req, res) => {
 
     if (requeriments.length) vehiclesConditions.requeriments = { $all: requeriments };
 
-    //TODO: probar notAllowedUsers(rechazar), probar si un usuario subido no acepta compartir vehiculos y otro si
+    let matchForShareVehicle;
+    if (shareVehicle) {
+      // si desea compartir vehiculo
+      matchForShareVehicle = {
+        $or: [{ 'users.0': { $exists: false } }, { 'users.shareVehicle': true }]
+      };
+    } else {
+      // si no desea compartir vehiculo
+      matchForShareVehicle = { 'users.0': { $exists: false } };
+    }
+
+    // Busca vehiculos que esten conectados, esten cerca, y que si tienen usuarios arriba
+    // los mismos compartan viaje
     const vehicles = await Vehicle.collection
       .aggregate([
         {
@@ -66,7 +78,7 @@ const setUserSearchingTravel = async (req, res) => {
               type: 'Point',
               coordinates: [longitude, latitude]
             },
-            maxDistance,
+            maxDistance: maxDistance || 1,
             query: {
               used: true,
               notAllowedUsers: { $nin: [ObjectID(user)] }
@@ -82,7 +94,7 @@ const setUserSearchingTravel = async (req, res) => {
             as: 'users'
           }
         },
-        { $match: { $or: [{ 'users.0': { $exists: false } }, { 'users.shareVehicle': true }] } }
+        { $match: matchForShareVehicle }
       ])
       .toArray();
 
@@ -130,12 +142,8 @@ const notUsedAnymore = async (req, res) => {
       { $pull: { usersUp: userObjectId } }
     );
 
-    const [vehicleUpdateResp, userUpdatedResp] = await Promise.all([
-      updateVehicleQuery,
-      updateUserQuery
-    ]);
+    const [userUpdatedResp] = await Promise.all([updateUserQuery, updateVehicleQuery]);
 
-    const vehicleUpdated = vehicleUpdateResp.value;
     const userUpdated = userUpdatedResp.value;
     socketSendMessage(userUpdated.socketId, channels.REFRESH_USERS, id);
     socketSendMessage(null, channels.VEHICLE_REMOVE_TRAVELLING_USER, id);

@@ -16,13 +16,17 @@ class CollectionsFactory {
    * @param {object} filters
    * @param {object} options
    */
-  find(one, filters, options) {
+  find(one, filters, options, projection) {
     filters = filters || {};
     options = options || {};
+    projection = projection || {};
 
     return one
       ? this.collection.findOne(filters, options)
-      : this.collection.find(filters, options).toArray();
+      : this.collection
+          .find(filters, options)
+          .project(projection)
+          .toArray();
   }
 
   update(one, filters, update, options) {
